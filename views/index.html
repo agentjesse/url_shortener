@@ -1,0 +1,35 @@
+<!-- This is a static file served from your routes in server.js -->
+
+<!DOCTYPE html>
+<html lang="en">
+  
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>My App</title>
+    <link rel="stylesheet" href="/style.css">
+  </head>
+
+  <body>
+    <p>
+      First field will be saved, last will not, but still be submitted via post to server
+    </p>
+    
+    <form id="myForm">
+      <input type="text" id="todo" maxlength="100" placeholder="to do:">
+      <input type="text" id="food" maxlength="100" placeholder="hungry for:">
+      <button type="submit">Submit</button>
+    </form>
+
+    <section class="dreams">
+      <ul id="dreams">
+      </ul>
+    </section>
+
+    <!-- Your web-app is https, so your scripts need to be too -->
+    <script src="/client.js"></script>
+
+  </body>
+  
+</html>
