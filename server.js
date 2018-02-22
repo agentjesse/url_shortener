@@ -28,8 +28,8 @@ app.get( /^(?:\/new\/)(.{1,})/, (req,res)=>{
   let isURLregex = /^(https?:\/\/)([-~\w\.]{1,256})(\.[a-z]{2,6})(:\d+)?(\/[-~:\w@\.\+#?&\/=]{0,})?$/
   let negateRegex = /(\.{2,}|\/:|\/\/w{4,}|\/\/w{1,2}\.)/ //specify fails to check for separated with with pipes, i.e. alternation
   let inputURL = req.params[0]
-  console.log( 'valid url check 1/2', isURLregex.test(inputURL) )
-  console.log( 'valid url check 2/2', !negateRegex.test(inputURL) ) //check for repeating dots and other fails
+  // console.log( 'valid url check 1/2', isURLregex.test(inputURL) )
+  // console.log( 'valid url check 2/2', !negateRegex.test(inputURL) ) //check for repeating dots and other fails
   
   //handle failing url
   if ( !isURLregex.test(inputURL) || negateRegex.test(inputURL) )
@@ -41,37 +41,59 @@ app.get( /^(?:\/new\/)(.{1,})/, (req,res)=>{
       console.log('connected successfully to mLab server')
       //pick database, assign to a variable to use with command operations
       const db = client.db('urlshortenerproj')
-      //make a shortcode that is not used in the collection already
-      let shortCode = String( Math.random() ).slice(2,3)//gets a string of 0-9 digits of length defined by call to slice
-      // console.log(shortCode)
-      //search for docs in collection with the same code
-      let searchResults
-      db.collection('url_shortcodes')
-        // .find( { code:{ $eq:shortCode } } )
-        // .find({})
-        .count( { code:{ $eq:shortCode } }, (err,result)=>{
-          if (err) console.error(err)
-          console.log('found with same code: ', result)
-        })
-        // .toArray((err, docsArr)=>{
-        //   if (err) console.error(err)
-        //   searchResults = docsArr
-        // })
-      console.log('results of .find()', searchResults)
+      //variables
+      const maxAttempts = 50
+      let currentAttempt = 0
 
-      //insert docs into the documents collection (creates the collection when adding docs if non-existent)
-      db.collection('url_shortcodes')
-        .insertMany( [ {'URL':inputURL, 'code':shortCode} ], (err,res)=>{
-          if (err) console.error(err)
-          console.log('inserted 1 document into url_shortcodes collection')
-          console.log('operation result: ', res)
-          client.close()
-        })
+      //functions
+      //code generation fn to return a shortcode
+      const makeCode = ()=> String( Math.random() ).slice(2,7)//gets a string of 0-9 digits of length defined by call to slice
+
+      //insert document fn
+      const insertDoc = ()=> {
+        db.collection('url_shortcodes')
+            .insertMany( [ {'URL':inputURL, 'code':shortCode} ], (err,res)=>{
+              if (err) console.error(err)
+              console.log('inserted 1 document into url_shortcodes collection')
+              // console.log('operation result: ', res)
+              client.close()
+            })
+      }
+
+      //check if document in collection with same shortcode fn
+      const checkIfExists = ()=>{
+        //search for docs in collection with the same code
+        db.collection('url_shortcodes')
+          .count( { code:{ $eq:shortCode } }, {limit:1}, (err,result)=>{ //the limit option is for performance, to stop counting after finding one doc. the result in the callback will be a number
+            if (err) console.error(err)
+            console.log('docs found with same code: ', result)
+            //handle submission or regen
+            if (result===0){
+              insertDoc()
+            }
+            else{
+              currentAttempt++
+              shortCode = makeCode()
+              console.log('new shortCode: ', shortCode)
+              //recursive calls to this same fn until a free code is found, or exit with fail if max attempts reached, which may indicate all codes used, or the nature of your random code was not able to find an unused shortcode within the maximum attempt limits
+              if(currentAttempt<maxAttempts) checkIfExists()
+              else{
+                console.log('max attempts reached. all or too many codes have been used for the random powered algorithm to find an available code. check db to confirm which case')
+                client.close()
+              }
+            }
+          })
+      }
+
+      //insert document with a new code every time.
+      let shortCode = makeCode()
+      console.log('shortCode: ', shortCode)
+      checkIfExists()
+      
     })
 
     //reply to request
     res.send( req.originalUrl.slice(5) )
-
   }
 
 })
