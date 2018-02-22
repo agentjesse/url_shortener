@@ -43,7 +43,7 @@ app.get( /^(?:\/new\/)(.{1,})/, (req,res)=>{
       const db = client.db('urlshortenerproj')
       //scoped variables
       const maxAttempts = 50
-      let currentAttempt = 0, shortcode
+      let currentAttempt = 0, shortCode
 
       //functions
       //fn to reply to request
