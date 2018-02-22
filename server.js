@@ -140,8 +140,7 @@ app.get( /^\/(\d{5})$/, (req,res)=>{
 
 })
 
-// listen for requests. uncomment line depending on server. choose first for glitch, as the .env files with the port will become available when their site hosts the app. or use the second when running this app locally
-// var listener = app.listen(process.env.PORT, function () {
+// listen for requests. glitch hosting will also provide a hidden .env with a port to use, but you can set it youself
 var listener = app.listen( 5000, function () {
   console.log('Your app is listening on port ' + listener.address().port)
 })
