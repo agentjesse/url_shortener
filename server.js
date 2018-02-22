@@ -41,11 +41,22 @@ app.get( /^(?:\/new\/)(.{1,})/, (req,res)=>{
       console.log('connected successfully to mLab server')
       //pick database, assign to a variable to use with command operations
       const db = client.db('urlshortenerproj')
-      //variables
+      //scoped variables
       const maxAttempts = 50
-      let currentAttempt = 0
+      let currentAttempt = 0, shortcode
 
       //functions
+      //fn to reply to request
+      const reply = (shortCode)=>{
+        shortCode ?
+        (
+          res.send(`URL saved, use code ${shortCode}`)
+        ) :
+        (
+          res.send('server error: shortcode could not be made')
+        )
+      }
+
       //code generation fn to return a shortcode
       const makeCode = ()=> String( Math.random() ).slice(2,7)//gets a string of 0-9 digits of length defined by call to slice
 
@@ -57,6 +68,7 @@ app.get( /^(?:\/new\/)(.{1,})/, (req,res)=>{
               console.log('inserted 1 document into url_shortcodes collection')
               // console.log('operation result: ', res)
               client.close()
+              reply(shortCode)
             })
       }
 
@@ -78,23 +90,53 @@ app.get( /^(?:\/new\/)(.{1,})/, (req,res)=>{
               //recursive calls to this same fn until a free code is found, or exit with fail if max attempts reached, which may indicate all codes used, or the nature of your random code was not able to find an unused shortcode within the maximum attempt limits
               if(currentAttempt<maxAttempts) checkIfExists()
               else{
-                console.log('max attempts reached. all or too many codes have been used for the random powered algorithm to find an available code. check db to confirm which case')
+                console.log('max attempts to find an unused code reached. all or.... too many codes have been used. check db to confirm which case')
                 client.close()
+                reply()
               }
             }
           })
       }
 
+      //initialization
       //insert document with a new code every time.
-      let shortCode = makeCode()
-      console.log('shortCode: ', shortCode)
+      shortCode = makeCode()
+      console.log('trying shortCode: ', shortCode)
       checkIfExists()
       
     })
 
-    //reply to request
-    res.send( req.originalUrl.slice(5) )
   }
+
+})
+
+//redirect to website when request with shortcode received
+app.get( /^\/(\d{5})$/, (req,res)=>{
+  console.log('get request to /#####')
+  console.log('received code: ', req.params[0])
+  
+  //connect to the server and do stuff
+  mongoClient.connect(uri,(err,client)=>{
+    console.log('connected successfully to mLab server')
+    //pick database, assign to a variable to use with command operations
+    const db = client.db('urlshortenerproj')
+  
+    //search for docs in collection with the same code
+    db.collection('url_shortcodes')
+      .findOne( { code:{ $eq: req.params[0] } }, (err,result)=>{ //result in callback will be the found object
+        if (err) console.error(err)
+        result ?
+        (
+          console.log('doc found with same code: ', result),
+          res.redirect( result.URL )
+        ):(
+          console.log('code not assigned'),
+          res.send('code not assigned')
+        )
+        client.close()
+      })
+  
+  })
 
 })
 
